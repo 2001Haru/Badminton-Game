@@ -54,7 +54,8 @@ for item in m['files']:
                     raise ValueError('Incomplete range')
                 print(item['path'], start, 'complete', flush=True)
                 return dest
-            except Exception:
+            except Exception as error:
+                print(item['path'], start, 'retry', attempt + 1, type(error).__name__, flush=True)
                 if attempt == 4:
                     raise
                 time.sleep(2 ** attempt)
