@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import time
 from zoneinfo import ZoneInfo
 
 repo = Path(__file__).resolve().parents[1]
@@ -23,11 +24,17 @@ with (repo / 'data.md').open('a', encoding='utf-8') as log:
     log.write(f'\n## 启动 {stamp}\n- seed: 1234; 49 frames/window; 8 fps; 704x1280; 50 steps\n')
     log.write('- command: ' + json.dumps(cmd, ensure_ascii=False) + '\n')
     log.write('- output: ' + str(out) + '\n')
+    log.write('- commit: ' + subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=repo, text=True).strip() + '\n')
+with (out/'environment.txt').open('w') as log:
+    subprocess.run([sys.executable, '-m', 'pip', 'freeze'], stdout=log, check=True)
+    subprocess.run(['nvidia-smi'], stdout=log, check=True)
 env = dict(os.environ, PYTHONPATH=str(repo/'third_party/WorldWander'), CUDA_VISIBLE_DEVICES='0', HF_HUB_OFFLINE='1')
+start = time.monotonic()
 with (out/'inference.log').open('w') as log:
     result = subprocess.run(cmd, cwd=repo/'third_party/WorldWander', env=env, stdout=log, stderr=subprocess.STDOUT)
 with (repo/'data.md').open('a', encoding='utf-8') as log:
     log.write(f'- exit code: {result.returncode}\n')
+    log.write(f'- wall time seconds: {time.monotonic()-start:.1f}\n')
 if result.returncode == 0:
     subprocess.run([sys.executable, str(repo/'scripts/assemble_outputs.py'),
                     '--manifest', '/linxi/dataset/badminton/prepared/manifest.json',
