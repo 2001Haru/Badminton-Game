@@ -15,10 +15,17 @@ p.add_argument('--workers', type=int, default=12)
 a = p.parse_args()
 m = json.loads(a.manifest.read_text())
 chunk_size = 64 * 1024 * 1024
+def file_sha256(path):
+    digest = hashlib.sha256()
+    with path.open('rb') as source:
+        while block := source.read(8 * 1024 * 1024):
+            digest.update(block)
+    return digest.hexdigest()
+
 for item in m['files']:
     target = a.output / item['path']
     if target.exists() and target.stat().st_size == item['size']:
-        if hashlib.file_digest(target.open('rb'), 'sha256').hexdigest() == item['sha256']:
+        if file_sha256(target) == item['sha256']:
             print('Verified existing', item['path'], flush=True)
             continue
     target.parent.mkdir(parents=True, exist_ok=True)
