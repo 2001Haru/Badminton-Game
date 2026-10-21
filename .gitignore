@@ -1,0 +1,7 @@
+/data.md
+/artifacts/
+__pycache__/
+*.pyc
+.venv/
+*.ckpt
+*.safetensors
