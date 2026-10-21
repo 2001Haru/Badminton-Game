@@ -41,7 +41,7 @@ while True:
             continue
         dest = remote + item['path']
         print('Uploading', item['path'], flush=True)
-        retry(ssh + ['mkdir -p ' + shlex.quote(str(Path(dest).parent).replace('\\','/'))])
+        retry(ssh + ['mkdir -p ' + shlex.quote(str(Path(dest).parent).replace('\\','/')) + ' && touch ' + shlex.quote(dest + '.uploading')])
         retry(sftp, input=f'reput "{src.resolve().as_posix()}" "{dest}.uploading"\n', text=True)
         retry(ssh + ['mv ' + shlex.quote(dest + '.uploading') + ' ' + shlex.quote(dest)])
         print('Uploaded', item['path'], flush=True)
