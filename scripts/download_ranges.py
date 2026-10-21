@@ -6,12 +6,15 @@ import json
 from pathlib import Path
 import time
 import requests
+import os
+import subprocess
 
 p = argparse.ArgumentParser()
 p.add_argument('--manifest', type=Path, required=True)
 p.add_argument('--output', type=Path, required=True)
 p.add_argument('--endpoint', default='https://hf-mirror.com')
 p.add_argument('--workers', type=int, default=12)
+p.add_argument('--transport', choices=['requests', 'curl'], default='requests')
 a = p.parse_args()
 m = json.loads(a.manifest.read_text())
 chunk_size = 64 * 1024 * 1024
@@ -33,9 +36,10 @@ for item in m['files']:
     parts.mkdir(exist_ok=True)
     url = f"{a.endpoint}/{m['repo']}/resolve/{m['revision']}/{item['path']}"
     # Resolve once; reuse the signed CDN URL across workers.
-    head = requests.head(url, allow_redirects=True, timeout=60)
-    head.raise_for_status()
-    resolved = head.url
+    if a.transport == 'requests':
+        head = requests.head(url, allow_redirects=True, timeout=60)
+        head.raise_for_status()
+        resolved = head.url
     def get_part(start):
         end = min(start + chunk_size, item['size']) - 1
         dest = parts / str(start)
@@ -43,6 +47,14 @@ for item in m['files']:
             return dest
         for attempt in range(5):
             try:
+                if a.transport == 'curl':
+                    r = subprocess.run(['curl.exe' if os.name == 'nt' else 'curl', '-fsSL',
+                        '--connect-timeout', '30', '--max-time', '300', '--range', f'{start}-{end}',
+                        '-o', str(dest), '-w', '%{http_code}', url], capture_output=True, text=True, check=True)
+                    if r.stdout != '206' or dest.stat().st_size != end-start+1:
+                        raise ValueError('Invalid curl range response')
+                    print(item['path'], start, 'complete', flush=True)
+                    return dest
                 with requests.get(resolved, headers={'Range': f'bytes={start}-{end}'}, stream=True, timeout=(30,120)) as r:
                     r.raise_for_status()
                     if r.status_code != 206 or r.headers.get('Content-Range') != f"bytes {start}-{end}/{item['size']}":
