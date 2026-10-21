@@ -1,4 +1,6 @@
 accelerate==1.6.0
+torch==2.5.1
+torchvision==0.20.1
 av==12.0.0
 decord==0.6.0
 diffusers @ git+https://github.com/huggingface/diffusers.git@6f1042e36cd588a7b66498f45c3bb7085e4fa395
