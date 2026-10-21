@@ -1,4 +1,5 @@
 import os
+import time
 
 import pytorch_lightning as L
 import argparse
@@ -21,7 +22,14 @@ class WorldWanderInferenceSystem(WorldWanderTrainSystem):
     # custom load ckpt
     def load_state_dict(self, state_dict, strict: bool = True):
         # only load the lora
-        self.transformer.load_state_dict(state_dict['lora'], strict=False)
+        lora = state_dict['lora']
+        if not lora:
+            raise ValueError('The WorldWander LoRA checkpoint is empty')
+        result = self.transformer.load_state_dict(lora, strict=False)
+        missing_lora = [key for key in result.missing_keys if 'lora' in key]
+        if missing_lora or result.unexpected_keys:
+            raise ValueError(f'LoRA mismatch: missing={missing_lora}, unexpected={result.unexpected_keys}')
+        print(f'Loaded {len(lora)} WorldWander LoRA tensors', flush=True)
 
     def on_predict_epoch_start(self):
         self.pred_pipeline = CustomWanPipeline(
@@ -43,6 +51,9 @@ class WorldWanderInferenceSystem(WorldWanderTrainSystem):
         ref_pixel_values = batch['ref_pixel_values'].unsqueeze(2) if self.hparams.dataset.is_one2three else None # # B, C, 1, H, W
         prompts = [self.hparams.get("prompt", batch["prompts"][0])]
         path = batch["path"]
+        started = time.monotonic()
+        torch.cuda.reset_peak_memory_stats()
+        print(f'Generating window {path[0]}', flush=True)
         # save input
         meta_video = input_pixel_values.squeeze(0).permute(1, 2, 3, 0)
         meta_video = ((meta_video + 1) * 0.5).clamp(0, 1).cpu().numpy()
@@ -83,6 +94,7 @@ class WorldWanderInferenceSystem(WorldWanderTrainSystem):
             concatenated_video = np.concatenate([meta_video, video_generate], axis=1)
         pred_video_path = os.path.join(self.pred_path, f"{path[0]}.mp4")
         export_to_video(concatenated_video, output_video_path=pred_video_path, fps=self.hparams.dataset.fps)
+        print(f'Completed {path[0]} in {time.monotonic()-started:.1f}s; peak CUDA allocation {torch.cuda.max_memory_allocated()/2**30:.2f} GiB', flush=True)
 
         return
 
