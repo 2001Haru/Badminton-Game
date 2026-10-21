@@ -5,3 +5,5 @@ __pycache__/
 .venv/
 *.ckpt
 *.safetensors
+data.md
+AGENTS.md
