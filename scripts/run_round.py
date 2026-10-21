@@ -28,4 +28,8 @@ with (out/'inference.log').open('w') as log:
     result = subprocess.run(cmd, cwd=repo/'third_party/WorldWander', env=env, stdout=log, stderr=subprocess.STDOUT)
 with (repo/'data.md').open('a', encoding='utf-8') as log:
     log.write(f'- exit code: {result.returncode}\n')
+if result.returncode == 0:
+    subprocess.run([sys.executable, str(repo/'scripts/assemble_outputs.py'),
+                    '--manifest', '/linxi/dataset/badminton/prepared/manifest.json',
+                    '--results', str(out)], check=True)
 sys.exit(result.returncode)
