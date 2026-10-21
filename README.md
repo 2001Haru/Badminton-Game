@@ -21,6 +21,7 @@ No paired ground-truth ego video exists; plausibility is not reconstruction accu
 Install PyTorch 2.5.1 + torchvision 0.20.1 (CUDA 12.4) in a separate environment,
 then `pip install -r requirements-inference.txt`.
 Run `scripts/download_models.py --output /linxi/models/worldwander`.
+If Hugging Face is blocked, prefix with `HF_ENDPOINT=https://hf-mirror.com HF_HUB_DISABLE_XET=1`.
 Run `scripts/prepare_clips.py --source /linxi/dataset/badminton --output /linxi/dataset/badminton/prepared`.
 Run `python scripts/run_round.py` from the cloud clone.
 
