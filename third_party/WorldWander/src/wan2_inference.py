@@ -41,7 +41,7 @@ class WorldWanderInferenceSystem(WorldWanderTrainSystem):
         # data process
         input_pixel_values = batch["input_pixel_values"] # B, C, F, H, W
         ref_pixel_values = batch['ref_pixel_values'].unsqueeze(2) if self.hparams.dataset.is_one2three else None # # B, C, 1, H, W
-        prompts = batch["prompts"]
+        prompts = [self.hparams.get("prompt", batch["prompts"][0])]
         path = batch["path"]
         # save input
         meta_video = input_pixel_values.squeeze(0).permute(1, 2, 3, 0)
@@ -71,9 +71,11 @@ class WorldWanderInferenceSystem(WorldWanderTrainSystem):
             width=self.hparams.dataset.width,
             num_frames=self.hparams.dataset.sample_n_frames,
             guidance_scale=5.0,
+            num_inference_steps=self.hparams.get("num_inference_steps", 50),
             attention_kwargs=attention_kwargs,
         )
         video_generate = video_generate.frames[0]    
+        export_to_video(video_generate, output_video_path=os.path.join(self.pred_path, f"{path[0]}_ego.mp4"), fps=self.hparams.dataset.fps)
         #
         if self.hparams.dataset.is_one2three:
             concatenated_video = np.concatenate([meta_ref, meta_video, video_generate], axis=1)
