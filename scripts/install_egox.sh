@@ -15,3 +15,4 @@ fi
     sentencepiece tyro opencv-python-headless
 cd /linxi/Badminton-Game/third_party/EgoX
 "$ENV/bin/python" -c 'import torch; import infer; from core.finetune.models.wan_i2v.sft_trainer import WanWidthConcatImageToVideoPipeline; print("EgoX imports OK", torch.__version__)'
+touch /linxi/tmp/egox/environment.ready

@@ -279,4 +279,12 @@ if __name__ == "__main__":
     parser.add_argument("--end_idx", type=int, default=-1)
     parser.add_argument("--in_the_wild", action='store_true', help="whether to use in-the-wild inference")
     args = parser.parse_args()
-    main(args)
+    import time
+    started = time.monotonic()
+    try:
+        main(args)
+    finally:
+        print(f"EgoX elapsed seconds: {time.monotonic()-started:.1f}", flush=True)
+        if torch.cuda.is_initialized():
+            print(f"EgoX peak allocated GiB: {torch.cuda.max_memory_allocated()/2**30:.3f}", flush=True)
+            print(f"EgoX peak reserved GiB: {torch.cuda.max_memory_reserved()/2**30:.3f}", flush=True)
