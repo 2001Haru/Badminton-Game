@@ -8,6 +8,7 @@ import subprocess
 import sys
 import time
 from zoneinfo import ZoneInfo
+from experiment_record import begin_round, record_condition, record_measurements
 
 repo = Path(__file__).resolve().parents[1]
 stamp = datetime.datetime.now(ZoneInfo('Asia/Singapore')).strftime('%Y%m%d_%H%M%S')
@@ -18,6 +19,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--prompt', default=default_prompt)
 parser.add_argument('--output-dir', type=Path)
 parser.add_argument('--label', default='red_player')
+parser.add_argument('--round-number', type=int)
 args = parser.parse_args()
 out = args.output_dir or Path('/linxi/dataset/badminton/results') / stamp
 out.mkdir(parents=True)
@@ -27,12 +29,10 @@ cmd = [sys.executable, 'src/wan2_inference.py', '--config=configs/wan2-2_lora_th
        '--original_video_root=/linxi/dataset/badminton/prepared/frames', '--pred_path=' + str(out), '--seed=1234',
        'model_id=/linxi/models/worldwander/Wan2.2-TI2V-5B-Diffusers', 'dataset.num_workers=0',
        'prompt=' + prompt]
-with (repo / 'data.md').open('a', encoding='utf-8') as log:
-    log.write(f'\n## 启动 {stamp}\n- seed: 1234; 49 frames/window; 8 fps; 704x1280; 50 steps\n')
-    log.write(f'- variant: {args.label}\n')
-    log.write('- command: ' + json.dumps(cmd, ensure_ascii=False) + '\n')
-    log.write('- output: ' + str(out) + '\n')
-    log.write('- commit: ' + subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=repo, text=True).strip() + '\n')
+round_number = args.round_number or begin_round(repo/'data.md', '第一视角生成实验')
+record_condition(repo/'data.md', args.label, prompt, out)
+metadata = {'round': round_number, 'command': cmd, 'commit': subprocess.check_output(['git','rev-parse','HEAD'],cwd=repo,text=True).strip()}
+(out/'run.json').write_text(json.dumps(metadata, indent=2), encoding='utf-8')
 with (out/'environment.txt').open('w') as log:
     subprocess.run([sys.executable, '-m', 'pip', 'freeze'], stdout=log, check=True)
     subprocess.run(['nvidia-smi'], stdout=log, check=True)
@@ -40,9 +40,10 @@ env = dict(os.environ, PYTHONPATH=str(repo/'third_party/WorldWander'), CUDA_VISI
 start = time.monotonic()
 with (out/'inference.log').open('w') as log:
     result = subprocess.run(cmd, cwd=repo/'third_party/WorldWander', env=env, stdout=log, stderr=subprocess.STDOUT)
-with (repo/'data.md').open('a', encoding='utf-8') as log:
-    log.write(f'- exit code: {result.returncode}\n')
-    log.write(f'- wall time seconds: {time.monotonic()-start:.1f}\n')
+elapsed = time.monotonic()-start
+metadata.update(inference_exit_code=result.returncode, wall_time_seconds=elapsed)
+(out/'run.json').write_text(json.dumps(metadata, indent=2), encoding='utf-8')
+record_measurements(repo/'data.md', out/'inference.log', elapsed)
 if result.returncode == 0:
     subprocess.run([sys.executable, str(repo/'scripts/assemble_outputs.py'),
                     '--manifest', '/linxi/dataset/badminton/prepared/manifest.json',

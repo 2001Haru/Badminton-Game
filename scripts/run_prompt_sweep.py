@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from zoneinfo import ZoneInfo
 import fcntl
+from experiment_record import begin_round
 
 repo = Path(__file__).resolve().parents[1]
 root = Path('/linxi/dataset/badminton/results')
@@ -29,11 +30,9 @@ def save():
     temporary.write_text(json.dumps(status, indent=2), encoding='utf-8')
     temporary.replace(batch/'status.json')
 save()
-with (repo/'data.md').open('a', encoding='utf-8') as log:
-    log.write(f'\n## Prompt sweep {stamp}\n- 用户要求：启动后不持续跟踪；单 GPU 顺序执行三组，每组包含两个完整片段。\n')
-    log.write('- batch: ' + str(batch) + '\n')
-    for label,prompt in prompts:
-        log.write(f'- {label}: {prompt}\n')
+round_number = begin_round(repo/'data.md', '三组提示词对照实验')
+status['round'] = round_number
+save()
 print('BATCH_DIR=' + str(batch), flush=True)
 for variant in status['variants']:
     variant['status'] = 'running'
@@ -41,12 +40,11 @@ for variant in status['variants']:
     print('START ' + variant['label'], flush=True)
     with (batch/(variant['label']+'.launcher.log')).open('w') as stream:
         result = subprocess.run([sys.executable,str(repo/'scripts/run_round.py'),
-            '--prompt',variant['prompt'],'--label',variant['label'],'--output-dir',variant['output']],
+            '--prompt',variant['prompt'],'--label',variant['label'],'--output-dir',variant['output'],
+            '--round-number',str(round_number)],
             cwd=repo, stdout=stream, stderr=subprocess.STDOUT)
     variant['returncode'] = result.returncode
     variant['status'] = 'completed' if result.returncode == 0 else 'failed'
     save()
-    with (repo/'data.md').open('a',encoding='utf-8') as log:
-        log.write(f'- sweep {variant["label"]}: {variant["status"]}, exit={result.returncode}\n')
     print(variant['status'].upper() + ' ' + variant['label'], flush=True)
 sys.exit(0 if all(v['status']=='completed' for v in status['variants']) else 1)
