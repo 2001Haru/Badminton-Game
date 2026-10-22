@@ -3,15 +3,18 @@ import re
 from pathlib import Path
 
 
-def begin_round(path: Path, title: str) -> int:
+def begin_round(path: Path, title: str, fields=None) -> int:
     existing = path.read_text(encoding='utf-8') if path.exists() else '# 实验记录\n'
     numbers = [int(n) for n in re.findall(r'^## (\d+)(?:\s|$)', existing, re.MULTILINE)]
     number = max(numbers, default=0) + 1
     with path.open('w', encoding='utf-8') as log:
         log.write(existing.rstrip() + f'\n\n## {number} {title}\n\n')
-        log.write('- 模型：WorldWander three2one_realworld；基座 Wan2.2-TI2V-5B。\n')
-        log.write('- 输入：_lcVkJifJnA，27:35–27:42（7 秒）、29:33–29:49（16 秒）。\n')
-        log.write('- 参数：seed=1234；50 steps；CFG=5；1280×704；8 fps；49 帧/窗口，共 5 个窗口。\n')
+        for field in (fields if fields is not None else [
+            '模型：WorldWander three2one_realworld；基座 Wan2.2-TI2V-5B。',
+            '输入：_lcVkJifJnA，27:35–27:42（7 秒）、29:33–29:49（16 秒）。',
+            '参数：seed=1234；50 steps；CFG=5；1280×704；8 fps；49 帧/窗口，共 5 个窗口。',
+        ]):
+            log.write('- ' + field + '\n')
     return number
 
 
