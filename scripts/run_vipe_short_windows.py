@@ -12,7 +12,10 @@ from experiment_record import begin_round
 repo=Path(__file__).resolve().parents[1]
 root=Path('/linxi/dataset/badminton/short_windows')
 deadline=time.monotonic()+24*3600
-while not all(Path('/linxi/tmp/vipe',f).exists() for f in ['environment.ready','hf-weights.ready']):
+assets=Path('/linxi/models/worldwander/vipe/torch/hub')
+required_assets=['geocalib/pinhole.tar','sam/sam_vit_b_01ec64.pth','aot/R50_DeAOTL_PRE_YTB_DAV.pth','droid_slam/droid.pth']
+while not (all(Path('/linxi/tmp/vipe',f).exists() for f in ['environment.ready','hf-weights.ready'])
+           and all((assets/f).is_file() and (assets/f).stat().st_size>1_000_000 for f in required_assets)):
     if time.monotonic()>deadline:raise TimeoutError('ViPE environment/weights not ready')
     time.sleep(20)
 names=['clip1_t02_49f','clip2_t04_49f']
