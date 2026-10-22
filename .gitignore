@@ -7,3 +7,6 @@ __pycache__/
 *.safetensors
 data.md
 AGENTS.md
+/third_party/EgoX/example
+/third_party/EgoX/checkpoints
+/third_party/EgoX/results
