@@ -15,7 +15,7 @@ stamp = datetime.datetime.now(ZoneInfo('Asia/Singapore')).strftime('%Y%m%d_%H%M%
 output = Path('/linxi/dataset/badminton/results')/('official_selftests_'+stamp)/'worldwander'
 output.mkdir(parents=True)
 number = begin_round(repo/'data.md', '官方样例自检', fields=[
-    'WorldWander：官方 realworld_scenarios/Third_Video/case1，配套 First_Video/case1 作为参考。',
+    'WorldWander：官方 realworld_scenarios/Third_Video/case1；同名 First_Video 是独立官方示例，不作为本次配对真值。',
     'WorldWander 参数：three2one_realworld；seed=1234；50 steps；CFG=5；1280×704；49 帧；输出 8 fps。',
 ])
 record_condition(repo/'data.md', 'WorldWander 官方真实场景样例', 'Transform it into the first-person perspective.', output)
@@ -40,7 +40,7 @@ if process.returncode==0:
     import imageio.v2 as iio
     import numpy as np
     from PIL import Image
-    for source,name in [('First_Video','official_ego_reference'),('Third_Video','official_exo_input')]:
+    for source,name in [('First_Video','official_ego_example_not_ground_truth'),('Third_Video','official_exo_input')]:
         frames=sorted((vendor/'examples/realworld_scenarios'/source/'case1').glob('*.png'))
         with iio.get_writer(str(output/(name+'.mp4')),fps=8,codec='libx264',macro_block_size=None) as writer:
             for frame in frames:
