@@ -60,6 +60,8 @@ for item in m['files']:
                     print(item['path'], start, 'complete', flush=True)
                     return dest
                 offset = dest.stat().st_size if dest.exists() else 0
+                if offset == end-start+1:
+                    return dest
                 if offset > end-start+1:
                     raise ValueError('Oversized partial range')
                 resume_start = start + offset
