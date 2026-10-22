@@ -88,7 +88,7 @@ tqdm==4.66.5
 transformers==4.48.3
 trimesh==4.6.2
 truststore==0.10.0
-typing-extensions==4.12.2
+typing-extensions==4.15.0
 urllib3==1.26.13
 usd-core==25.2.post1
 vhacdx==0.0.8.post2
