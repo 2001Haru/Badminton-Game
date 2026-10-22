@@ -28,11 +28,35 @@ def transfer(job):
     start = time.monotonic()
     part = Path(str(dest) + '.partial')
     if not dest.exists():
-        with requests.get(f'https://huggingface.co/{repo}/resolve/{revision}/{name}', stream=True, timeout=(30, 120)) as response:
-            response.raise_for_status()
-            with part.open('wb') as handle:
-                for chunk in response.iter_content(4 * 1024 * 1024):
-                    handle.write(chunk)
+        size = entry['size']
+        url = f'https://hf-mirror.com/{repo}/resolve/{revision}/{name}'
+        def fetch_range(index):
+            begin = index * 16 * 1024 * 1024
+            end = min(size, begin + 16 * 1024 * 1024) - 1
+            piece = Path(str(part) + f'.{index}')
+            if piece.exists() and piece.stat().st_size == end - begin + 1:
+                return piece
+            for attempt in range(5):
+                try:
+                    with requests.get(url, headers={'Range': f'bytes={begin}-{end}'}, stream=True, timeout=(30, 60)) as response:
+                        response.raise_for_status()
+                        if response.status_code != 206 and size > end - begin + 1:
+                            raise ValueError('Server ignored byte range')
+                        with piece.open('wb') as handle:
+                            for chunk in response.iter_content(1024 * 1024):
+                                handle.write(chunk)
+                    if piece.stat().st_size != end - begin + 1:
+                        raise ValueError('Range size mismatch')
+                    return piece
+                except Exception:
+                    if attempt == 4:
+                        raise
+                    time.sleep(2)
+        with ThreadPoolExecutor(max_workers=4) as ranges:
+            pieces = list(ranges.map(fetch_range, range((size + 16 * 1024 * 1024 - 1) // (16 * 1024 * 1024))))
+        with part.open('wb') as handle:
+            for piece in pieces:
+                handle.write(piece.read_bytes())
         if entry.get('size') and part.stat().st_size != entry['size']:
             raise ValueError('Size mismatch: ' + name)
         part.replace(dest)
@@ -54,3 +78,4 @@ def transfer(job):
 with ThreadPoolExecutor(max_workers=3) as pool:
     list(pool.map(transfer, jobs))
 print('All relay uploads verified', flush=True)
+subprocess.run(ssh + ['nohup python /linxi/Badminton-Game/scripts/download_vipe_hf.py > /linxi/tmp/vipe/download-hf-relay.log 2>&1 < /dev/null &'], check=True)
