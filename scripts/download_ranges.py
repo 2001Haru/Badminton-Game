@@ -59,11 +59,17 @@ for item in m['files']:
                         raise ValueError('Invalid curl range response')
                     print(item['path'], start, 'complete', flush=True)
                     return dest
-                with requests.get(resolved, headers={'Range': f'bytes={start}-{end}'}, stream=True, timeout=(30,120)) as r:
+                offset = dest.stat().st_size if dest.exists() else 0
+                if offset > end-start+1:
+                    raise ValueError('Oversized partial range')
+                resume_start = start + offset
+                if offset:
+                    print(item['path'], start, 'resume at byte', resume_start, flush=True)
+                with requests.get(resolved, headers={'Range': f'bytes={resume_start}-{end}'}, stream=True, timeout=(30,120)) as r:
                     r.raise_for_status()
-                    if r.status_code != 206 or r.headers.get('Content-Range') != f"bytes {start}-{end}/{item['size']}":
+                    if r.status_code != 206 or r.headers.get('Content-Range') != f"bytes {resume_start}-{end}/{item['size']}":
                         raise ValueError('Server returned an unexpected byte range')
-                    with dest.open('wb') as out:
+                    with dest.open('ab' if offset else 'wb') as out:
                         for block in r.iter_content(1024 * 1024):
                             out.write(block)
                 if dest.stat().st_size != end-start+1:
