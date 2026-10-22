@@ -16,9 +16,9 @@ if [ ! -e "$ENV" ]; then
     cp -a /linxi/tmp/egox/venv "$ENV"
     /opt/conda/bin/python -m venv --upgrade "$ENV"
 fi
-if [ ! -f /usr/include/eigen3/Eigen/Core ]; then
+if [ ! -f /usr/include/eigen3/Eigen/Core ] || ! ldconfig -p | grep -q libGL.so.1; then
     apt-get update -qq
-    apt-get install -y --no-install-recommends libeigen3-dev
+    apt-get install -y --no-install-recommends libeigen3-dev libgl1 libglib2.0-0
 fi
 PY="$ENV/bin/python"
 "$PY" -m pip install --index-url https://pypi.tuna.tsinghua.edu.cn/simple wheel setuptools ninja
