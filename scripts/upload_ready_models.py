@@ -12,9 +12,11 @@ p.add_argument('--manifest', type=Path, required=True)
 p.add_argument('--host', required=True)
 p.add_argument('--port', required=True)
 p.add_argument('--identity', required=True)
+p.add_argument('--remote-dir', default='/linxi/models/worldwander/Wan2.2-TI2V-5B-Diffusers')
+p.add_argument('--remote-manifest', default='/linxi/models/worldwander/model-manifest.json')
 a = p.parse_args()
 m = json.loads(a.manifest.read_text())
-remote = '/linxi/models/worldwander/Wan2.2-TI2V-5B-Diffusers/'
+remote = a.remote_dir.rstrip('/') + '/'
 connection_options = ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=4']
 ssh = ['ssh', '-i', a.identity, '-p', a.port] + connection_options + [a.host]
 sftp = ['sftp', '-i', a.identity, '-P', a.port] + connection_options + ['-b', '-', a.host]
@@ -27,11 +29,11 @@ def retry(command, **kwargs):
                 raise
             print('Connection failed; resuming in 10 seconds', flush=True)
             time.sleep(10)
-probe = "import json,pathlib; m=json.load(open('/linxi/models/worldwander/model-manifest.json')); r=pathlib.Path('/linxi/models/worldwander/Wan2.2-TI2V-5B-Diffusers'); print(json.dumps({x['path']:(r/x['path']).stat().st_size if (r/x['path']).exists() else 0 for x in m['files']}))"
+probe = f"import json,pathlib; m=json.load(open({a.remote_manifest!r})); r=pathlib.Path({a.remote_dir!r}); print(json.dumps({{x['path']:(r/x['path']).stat().st_size if (r/x['path']).exists() else 0 for x in m['files']}}))"
 while True:
     sizes = json.loads(retry(ssh + ['python -c ' + shlex.quote(probe)], text=True, stdout=subprocess.PIPE).stdout)
     if all(sizes.get(x['path']) == x['size'] for x in m['files']):
-        print('All cloud weight files have expected sizes; run preflight for hashes.', flush=True)
+        print('All selected cloud weight files have expected sizes; run preflight for hashes.', flush=True)
         break
     for item in m['files']:
         if sizes.get(item['path']) == item['size']:

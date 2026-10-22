@@ -15,9 +15,13 @@ p.add_argument('--output', type=Path, required=True)
 p.add_argument('--endpoint', default='https://hf-mirror.com')
 p.add_argument('--workers', type=int, default=12)
 p.add_argument('--transport', choices=['requests', 'curl'], default='requests')
+p.add_argument('--chunk-mib', type=int, default=64)
+p.add_argument('--remove-parts-after-verify', action='store_true')
 a = p.parse_args()
 m = json.loads(a.manifest.read_text())
-chunk_size = 64 * 1024 * 1024
+if a.chunk_mib <= 0:
+    p.error('--chunk-mib must be positive')
+chunk_size = a.chunk_mib * 1024 * 1024
 def file_sha256(path):
     digest = hashlib.sha256()
     with path.open('rb') as source:
@@ -85,3 +89,10 @@ for item in m['files']:
         raise ValueError('SHA-256 mismatch: ' + str(target))
     temporary.replace(target)
     print('Verified complete', item['path'], flush=True)
+    if a.remove_parts_after_verify:
+        for part in files:
+            if part.parent.resolve() != parts.resolve() or not part.name.isdigit():
+                raise ValueError('Unexpected temporary part path')
+            part.unlink()
+        if not any(parts.iterdir()):
+            parts.rmdir()
