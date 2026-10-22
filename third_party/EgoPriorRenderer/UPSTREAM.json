@@ -1,0 +1,5 @@
+{
+  "repository": "https://github.com/kdh8156/EgoX-EgoPriorRenderer",
+  "commit": "17cdef688885c3ac6a4c371a2d620391cc28dab4",
+  "runtime_note": "Compatibility attempt: PyTorch 2.5.1 CUDA 12.4 instead of upstream lock 2.7.0 CUDA 12.8"
+}
