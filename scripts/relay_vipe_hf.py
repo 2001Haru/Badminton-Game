@@ -29,7 +29,7 @@ def transfer(job):
     part = Path(str(dest) + '.partial')
     if not dest.exists():
         size = entry['size']
-        url = f'https://hf-mirror.com/{repo}/resolve/{revision}/{name}'
+        url = f'https://huggingface.co/{repo}/resolve/{revision}/{name}'
         def fetch_range(index):
             begin = index * 16 * 1024 * 1024
             end = min(size, begin + 16 * 1024 * 1024) - 1
