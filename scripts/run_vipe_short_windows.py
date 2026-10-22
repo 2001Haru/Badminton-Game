@@ -26,9 +26,17 @@ while subprocess.check_output(['nvidia-smi','--query-compute-apps=pid','--format
     if time.monotonic()>deadline:raise TimeoutError('GPU remains occupied')
     time.sleep(20)
 stamp=datetime.datetime.now(ZoneInfo('Asia/Singapore')).strftime('%Y%m%d_%H%M%S')
-out=Path('/linxi/dataset/badminton/vipe_runs')/stamp
-out.mkdir(parents=True)
-number=begin_round(repo/'data.md','两个短窗口的 ViPE 场景重建',fields=[
+resume=os.environ.get('VIPE_RESUME_OUTPUT')
+out=Path(resume) if resume else Path('/linxi/dataset/badminton/vipe_runs')/stamp
+out.mkdir(parents=True,exist_ok=bool(resume))
+if resume:
+    previous=(out/'run.json').read_text()
+    number=json.loads(previous)['round']
+    (out/('run-before-'+stamp+'.json')).write_text(previous)
+    for old_log in out.glob('clip*.log'):
+        old_log.rename(old_log.with_name(old_log.stem+'-before-'+stamp+'.log'))
+else:
+    number=begin_round(repo/'data.md','两个短窗口的 ViPE 场景重建',fields=[
     '方法：EgoX-EgoPriorRenderer，lyra（MoGe2 + Video Depth Anything），固定外部机位假设。',
     '输入：短片段 1 的 00:02 起、短片段 2 的 00:04 起；各 49 帧，30 fps，784×448，无补帧。',
     '目标人物：红衣石宇奇；本轮仅重建场景，不标注 ego 轨迹、不运行视频生成。',
